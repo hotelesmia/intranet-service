@@ -4,7 +4,7 @@ import * as fs from "node:fs"
 import config from "../config.js"
 import model from "../database/models/index.js"
 import crypto from "crypto"
-
+import { logActivity } from "./log.controller.js"
 export const getZones = async (req, res) => {
     const zones = await model.zones.findAll({
         attributes: ['id', 'key', 'description']
@@ -79,6 +79,8 @@ export const getDirectoryFiles = async (req, res) => {
 }
 
 export const uploadFile = async (req, res) => {
+    const userSession = req.user
+    console.log(req.user)
     const t = await model.sequelize.transaction()
     try {
         const form = formidable({
@@ -87,25 +89,27 @@ export const uploadFile = async (req, res) => {
                 return isFileValid(mimetype)
             }
         })
-
         form.parse(req, async (err, fields, files) => {
+            console.log(fields)
             if (!files.file) return res.status(400).json({ errorCode: 'file_required' })
-            const { directory, masterFile, name, description } = fields
+            const { directory, masterFile, name, description, tags } = fields
             const file = files.file
             const originalFilename = file.originalFilename.replace(/\s/g, "-")
             const fileName = `${file.newFilename}-${originalFilename}`
             const fileContent = fs.readFileSync(file.filepath)
-            const fileKey = `${config.S3_FILES_SRC}${fileName}`
             //handle file register
             //verificamos existencia del directorio
             const checkDirectoryData = await getDirectoryByKey(directory)
+            //Si no existe directorio, terminamos proceso
             if (!checkDirectoryData) return res.status(400).json({ errorCode: 'directory_not_exist' })
+            //seteamos fileKey AWS con folder actual
+            const fileKey = `${config.S3_FILES_SRC}${checkDirectoryData.key}/${fileName}`
             //verificamos exisitencia del archivo principal
             let masterFileItem = await getMasterFileByKey(masterFile)
-            if (!masterFileItem) {                
+            if (!masterFileItem) {
                 masterFileItem = await model.masterFiles.create({
                     uuid: crypto.randomUUID(),
-                    parentDirectory: 0,
+                    parentDirectory: checkDirectoryData.id,
                     name,
                     description,
                     order: 0,
@@ -123,16 +127,17 @@ export const uploadFile = async (req, res) => {
 
             }, { transaction: t })
             //Generamos tags del archivo
-
-            //Generamos un log
-
+            await createFileTags(fileItem.id, tags)
             //file upload section                        
-            const s3Upload = await S3Service.upload(fileKey, fileContent)
-            s3Upload ? await t.commit() : await t.rollback()
-
-            return res.send({ data: { masterFile } })
+            const s3Upload = true //await S3Service.upload(fileKey, fileContent)
+            if (!s3Upload) {
+                await t.rollback()
+                return res.send(400)
+            }
+            await t.commit()
+            await logActivity({ 'createdBy': userSession?.identity, 'target': 'files', 'targetId': fileItem.id, action: 'create', value: JSON.stringify(fileItem) })
+            return res.send({ data: { fileItem } })
         })
-
     } catch (error) {
         console.log(error)
         await t.rollback()
@@ -158,6 +163,29 @@ const getMasterFileByKey = async (key) => {
             attributes: ['id', 'uuid', 'name']
         })
     } catch (error) {
+        return false
+    }
+}
+
+const createFileTags = async (fileId, items) => {
+    try {
+        if(items.trim() !== ""){
+            const arrayItems = items.split(",")
+            let tags = []
+            if(arrayItems){
+                tags = arrayItems.map(function(item){
+                    return {
+                        fileId,
+                        tag: item,
+                        status: 1
+                    }
+                })
+                return await model.fileTags.bulkCreate(tags)
+            }
+        }
+        return false
+    } catch (error) {
+        console.log(error)
         return false
     }
 }

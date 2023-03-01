@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   logActivities.init({
+    uuid: DataTypes.STRING,
     createdBy: DataTypes.STRING,
     target: DataTypes.STRING,
     targetId: DataTypes.INTEGER,
