@@ -2,18 +2,19 @@ import config from "../config.js"
 import { PutObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 // Step 2: The s3Client function validates your request and directs it to your Space's specified endpoint using the AWS SDK.
 const s3Client = new S3Client({
-    endpoint: config.DO_ENDPOINT, // Find your endpoint in the control panel, under Settings. Prepend "https://".
+    endpoint: config.S3_ENDPOINT, // Find your endpoint in the control panel, under Settings. Prepend "https://".
     forcePathStyle: false,
-    region: "us-east-1", // Must be "us-east-1" when creating new Spaces. Otherwise, use the region in your endpoint (e.g. nyc3).
+    region: "us-east-2",
     credentials: {
-        accessKeyId: config.DO_ACCESS_KEY_ID, // Access key pair. You can create access key pairs using the control panel or API.
-        secretAccessKey: config.DO_SECRET_ACCESS_KEY // Secret access key defined through an environment variable.
+        accessKeyId: config.S3_ACCESS_KEY_ID, // Access key pair. You can create access key pairs using the control panel or API.
+        secretAccessKey: config.S3_SECRET_ACCESS_KEY // Secret access key defined through an environment variable.
     }
 });
+
 const upload = async (fileKey, fileContent) => {
     // Step 3: Define the parameters for the object you want to upload.
     const params = {
-        Bucket: config.DO_BUCKET,
+        Bucket: config.S3_BUCKET,
         Key: fileKey,
         Body: fileContent,
         ACL: "private",
@@ -27,20 +28,19 @@ const upload = async (fileKey, fileContent) => {
                 "/" +
                 params.Key
             );
-            return data
+            return true
         } catch (err) {
             console.log("Error", err)
+            return false
         }
     };
-
-
     // Step 5: Call the uploadObject function.
-    uploadObject();
+    return await uploadObject();
 }
 
 const download = async (fileKey) => {
     var params = {
-        Bucket: config.DO_BUCKET,
+        Bucket: config.S3_BUCKET,
         Key: fileKey
     };
 
@@ -61,12 +61,7 @@ const download = async (fileKey) => {
             console.log("Error", error)
         }
     }
-    return downloadObject()
-    /*
-    .then(response => {
-        return response
-    })*/
-
+    return await downloadObject()
 }
 
 export default {

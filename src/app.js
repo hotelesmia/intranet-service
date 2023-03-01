@@ -23,7 +23,9 @@ app.use(express.json())
 
 import indexRoutes from "./routes/index.routes.js"
 import authRoutes from "./routes/auth.routes.js"
+import filesRoutes from "./routes/files.routes.js"
 app.use(indexRoutes)
 app.use(authRoutes)
+app.use(filesRoutes)
 
 export default app

@@ -7,11 +7,11 @@ const configurations = {
   ALLOW_LIST_HOSTS: process.env.ALLOW_LIST_HOSTS || '',
   AUTH_API_URL: process.env.AUTH_API_URL || '',
   SOCIAL_API: process.env.SOCIAL_API || '',
-  DO_ENDPOINT: process.env.DO_ENDPOINT || '',
-  DO_BUCKET: process.env.DO_BUCKET || '',
-  DO_ACCESS_KEY_ID: process.env.DO_ACCESS_KEY_ID || '',
-  DO_SECRET_ACCESS_KEY: process.env.DO_SECRET_ACCESS_KEY || '',
-  DO_SPACE_CV_FILES_SRC: process.env.DO_SPACE_CV_FILES_SRC || ''
+  S3_ENDPOINT: process.env.S3_ENDPOINT || '',
+  S3_BUCKET: process.env.S3_BUCKET || '',
+  S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID || '',
+  S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY || '',
+  S3_FILES_SRC: process.env.S3_FILES_SRC || ''
 };
 
 export default configurations;
