@@ -23,6 +23,9 @@ module.exports = {
       fullKey: {
         type: Sequelize.STRING
       },
+      type: {
+        type: Sequelize.STRING
+      },
       status: {
         type: Sequelize.BOOLEAN
       },

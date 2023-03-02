@@ -7,20 +7,19 @@ import crypto from "crypto"
 import { logActivity } from "./log.controller.js"
 export const getZones = async (req, res) => {
     const zones = await model.zones.findAll({
-        attributes: ['id', 'key', 'description']
+        attributes: ['id', 'uuid', 'key', 'description']
     })
-    const directory = await getDirectoryByKey('85db88f3-487e-44a7-ab05-59809d4f79ad')
-    console.log(directory)
-    return res.send({ zones, resp: directory ? directory : 'no hay' })
+    return res.send({ data: { zones } })
 }
 
 const getZoneByKey = async (key) => {
-    const zone = await model.zones.findAll({
+    const zone = await model.zones.findOne({
         attributes: ['id', 'key', 'description'],
-        where: { 'key': key }
+        where: { 'uuid': key }
     })
     return zone
 }
+
 export const postZone = async (req, res) => {
     try {
         const { key, description } = req.body
@@ -45,7 +44,7 @@ export const postDirectory = async (req, res) => {
         const directory = await model.directories.create({
             uuid: crypto.randomUUID(),
             key,
-            zone: zoneData.id,
+            zoneId: zoneData.id,
             parentDirectory: 0,
             name,
             description
@@ -62,7 +61,22 @@ export const postDirectory = async (req, res) => {
 export const getDirectories = async (req, res) => {
     try {
         const directories = await model.directories.findAll({
-            attributes: ['id', 'key', 'name', 'description']
+            attributes: ['id', 'uuid', 'zoneId', 'key', 'name', 'description']
+        })
+        return res.status(200).send({ data: { directories } })
+    } catch (error) {
+        console.log(error)
+        return res.send(400)
+    }
+}
+
+export const getZoneDirectories = async (req, res) => {
+    try {
+        const zoneUuid = req.params.zone
+        const zone = await getZoneByKey(zoneUuid)
+        const directories = await model.directories.findAll({
+            attributes: ['id', 'uuid', 'zoneId', 'key', 'name', 'description'],
+            where: { zoneId: zone.id }
         })
         return res.status(200).send({ data: { directories } })
     } catch (error) {
@@ -73,9 +87,41 @@ export const getDirectories = async (req, res) => {
 
 export const getDirectoryFiles = async (req, res) => {
 
-    const files = await model.files.findAll({
-
+    //Obtenemos el directorio
+    const targetDirectory = req.params.directory
+    const directory = await model.directories.findOne({
+        where: { uuid: targetDirectory }
     })
+
+    const { rows, count } = await model.masterFiles.findAndCountAll({
+        where: { parentDirectory: directory.id },
+        distinct: true,
+        order: model.sequelize.literal('`masterFiles`.`id` DESC, `files`.`id` DESC'),
+        //order: model.sequelize.literal('`masterFiles`.`id` DESC'),
+        //limit: 1,
+        include: {
+            model: model.files,
+            //separate: true,        
+            //order: model.sequelize.literal('`files`.`id` DESC'),
+            //limit: 1
+        }
+    })
+
+    return res.send({ data: { masterFiles: rows, count } })
+}
+
+export const getFile = async (req, res) => {
+    const key = req.params.file
+    const file = await model.masterFiles.findOne({
+        where: { 'uuid': key },
+        //order: model.sequelize.literal('`files`.`id` DESC'),
+        include: {
+            model: model.files,
+            separate: true,
+            order: model.sequelize.literal('`files`.`id` DESC'),
+        }
+    })
+    res.send({ data: { file } })
 }
 
 export const uploadFile = async (req, res) => {
@@ -123,6 +169,7 @@ export const uploadFile = async (req, res) => {
                 name: name,
                 key: fileName,
                 fullKey: fileKey,
+                type: getFileExtension(fileName),
                 status: 1
 
             }, { transaction: t })
@@ -169,11 +216,11 @@ const getMasterFileByKey = async (key) => {
 
 const createFileTags = async (fileId, items) => {
     try {
-        if(items.trim() !== ""){
+        if (items.trim() !== "") {
             const arrayItems = items.split(",")
             let tags = []
-            if(arrayItems){
-                tags = arrayItems.map(function(item){
+            if (arrayItems) {
+                tags = arrayItems.map(function (item) {
                     return {
                         fileId,
                         tag: item,
@@ -203,4 +250,18 @@ const isFileValid = (mimetype) => {
         return false;
     }
     return true;
+}
+
+const getFileExtension = (path) => {
+    try {
+        let basename = path.split(/[\\/]/).pop(),  // extract file name from full path ...
+            // (supports `\\` and `/` separators)
+            pos = basename.lastIndexOf(".");       // get last position of `.`
+
+        if (basename === "" || pos < 1)            // if file name is empty or ...
+            return ""                              //  `.` not found (-1) or comes first (0)
+        return basename.slice(pos + 1);            // extract extension ignoring `.`
+    } catch (error) {
+        return ""
+    }
 }
