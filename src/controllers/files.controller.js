@@ -126,17 +126,14 @@ export const getFile = async (req, res) => {
 
 export const uploadFile = async (req, res) => {
     const userSession = req.user
-    console.log(req.user)
     const t = await model.sequelize.transaction()
     try {
         const form = formidable({
             filter: function ({ name, originalFilename, mimetype }) {
-                //return mimetype && mimetype.includes("pdf")
                 return isFileValid(mimetype)
             }
         })
         form.parse(req, async (err, fields, files) => {
-            console.log(fields)
             if (!files.file) return res.status(400).json({ errorCode: 'file_required' })
             const { directory, masterFile, name, description, tags } = fields
             const file = files.file
@@ -159,7 +156,8 @@ export const uploadFile = async (req, res) => {
                     name,
                     description,
                     order: 0,
-                    status: 1
+                    status: 1,
+                    createdBy: userSession?.identity
                 }, { transaction: t })
             }
             //Si existe archivo principal, solo generamos versionado
@@ -167,14 +165,16 @@ export const uploadFile = async (req, res) => {
                 uuid: crypto.randomUUID(),
                 masterFileId: masterFileItem.id,
                 name: name,
+                description: description,
                 key: fileName,
                 fullKey: fileKey,
                 type: getFileExtension(fileName),
-                status: 1
+                status: 1,
+                createdBy: userSession?.identity
 
             }, { transaction: t })
             //Generamos tags del archivo
-            await createFileTags(fileItem.id, tags)
+            //await createFileTags(fileItem.id, tags)
             //file upload section                        
             const s3Upload = true //await S3Service.upload(fileKey, fileContent)
             if (!s3Upload) {
@@ -183,7 +183,8 @@ export const uploadFile = async (req, res) => {
             }
             await t.commit()
             await logActivity({ 'createdBy': userSession?.identity, 'target': 'files', 'targetId': fileItem.id, action: 'create', value: JSON.stringify(fileItem) })
-            return res.send({ data: { fileItem } })
+            const masterFileCreated = await getMasterFilesByKey(masterFileItem.uuid)
+            return res.send({ data: { masterFile: masterFileCreated } })
         })
     } catch (error) {
         console.log(error)
@@ -265,3 +266,16 @@ const getFileExtension = (path) => {
         return ""
     }
 }
+
+const getMasterFilesByKey = async (key) => {
+    const masterFile = await model.masterFiles.findOne({
+        where: { 'uuid': key },
+        include: {
+            model: model.files,
+            separate: true,
+            order: model.sequelize.literal('`files`.`id` DESC'),
+        }
+    })
+    return masterFile
+}
+   

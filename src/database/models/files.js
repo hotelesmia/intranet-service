@@ -17,9 +17,11 @@ module.exports = (sequelize, DataTypes) => {
     uuid: DataTypes.STRING,
     masterFileId: DataTypes.INTEGER,
     name: DataTypes.STRING,
+    description: DataTypes.STRING,
     key: DataTypes.STRING,
     fullKey: DataTypes.STRING,
     type: DataTypes.STRING,
+    createdBy: DataTypes.STRING,
     status: DataTypes.BOOLEAN
   }, {
     sequelize,

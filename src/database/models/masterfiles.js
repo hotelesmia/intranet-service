@@ -20,7 +20,8 @@ module.exports = (sequelize, DataTypes) => {
     parentDirectory: DataTypes.INTEGER,
     name: DataTypes.STRING,
     description: DataTypes.STRING,
-    status: DataTypes.BOOLEAN
+    status: DataTypes.BOOLEAN,
+    createdBy: DataTypes.STRING,
   }, {
     sequelize,
     modelName: 'masterFiles',
