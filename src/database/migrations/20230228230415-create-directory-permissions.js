@@ -8,7 +8,7 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      userId: {
+      allowTo: {
         type: Sequelize.INTEGER
       },
       roleGroupKey: {

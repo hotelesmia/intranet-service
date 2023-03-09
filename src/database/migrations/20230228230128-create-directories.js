@@ -32,6 +32,9 @@ module.exports = {
       createdBy: {
         type: Sequelize.STRING
       },
+      commonAccess: {
+        type: Sequelize.BOOLEAN
+      },
       status: {
         type: Sequelize.BOOLEAN
       },

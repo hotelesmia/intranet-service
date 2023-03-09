@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   directoryPermissions.init({
-    userId: DataTypes.INTEGER,
+    allowTo: DataTypes.INTEGER,
     roleGroupKey: DataTypes.STRING,
     directoryId: DataTypes.INTEGER,
     permissionId: DataTypes.INTEGER,

@@ -26,6 +26,9 @@ module.exports = {
       createdBy: {
         type: Sequelize.STRING
       },
+      commonAccess: {
+        type: Sequelize.BOOLEAN
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

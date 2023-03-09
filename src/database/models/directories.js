@@ -22,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     description: DataTypes.STRING,
     order: DataTypes.INTEGER,
     createdBy: DataTypes.STRING,
+    commonAccess: DataTypes.BOOLEAN,
     status: DataTypes.BOOLEAN
   }, {
     sequelize,

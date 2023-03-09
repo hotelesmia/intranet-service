@@ -22,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     description: DataTypes.STRING,
     status: DataTypes.BOOLEAN,
     createdBy: DataTypes.STRING,
+    commonAccess: DataTypes.BOOLEAN,
   }, {
     sequelize,
     modelName: 'masterFiles',

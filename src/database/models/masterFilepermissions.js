@@ -3,7 +3,7 @@ const {
   Model
 } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  class filePermissions extends Model {
+  class masterFilePermissions extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -13,15 +13,15 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
-  filePermissions.init({
-    userId: DataTypes.INTEGER,
+  masterFilePermissions.init({
+    allowTo: DataTypes.INTEGER,
     roleGroupKey: DataTypes.STRING,
-    fileId: DataTypes.INTEGER,
+    masterFileId: DataTypes.INTEGER,
     permissionId: DataTypes.INTEGER,
     stauts: DataTypes.BOOLEAN
   }, {
     sequelize,
-    modelName: 'filePermissions',
+    modelName: 'masterFilePermissions',
   });
-  return filePermissions;
+  return masterFilePermissions;
 };

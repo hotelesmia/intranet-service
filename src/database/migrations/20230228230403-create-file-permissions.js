@@ -1,20 +1,20 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('filePermissions', {
+    await queryInterface.createTable('masterFilePermissions', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      userId: {
+      allowTo: {
         type: Sequelize.INTEGER
       },
       roleGroupKey: {
         type: Sequelize.STRING
       },
-      fileId: {
+      masterFileId: {
         type: Sequelize.INTEGER
       },
       permissionId: {
@@ -34,6 +34,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('filePermissions');
+    await queryInterface.dropTable('masterFilePermissions');
   }
 };

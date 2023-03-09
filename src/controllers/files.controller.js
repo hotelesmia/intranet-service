@@ -5,6 +5,8 @@ import config from "../config.js"
 import model from "../database/models/index.js"
 import crypto from "crypto"
 import { logActivity } from "./log.controller.js"
+import { Op } from "sequelize"
+
 export const getZones = async (req, res) => {
     const zones = await model.zones.findAll({
         attributes: ['id', 'uuid', 'key', 'description']
@@ -47,7 +49,8 @@ export const postDirectory = async (req, res) => {
             zoneId: zoneData.id,
             parentDirectory: 0,
             name,
-            description
+            description,
+            commonAccess: 1
         }, { transaction: t })
         await t.commit()
         return res.status(201).send({ data: { directory } })
@@ -70,13 +73,40 @@ export const getDirectories = async (req, res) => {
     }
 }
 
+/**
+ * 
+ * @param {*} req 
+ * @param {*} res 
+ * @returns 
+ * @history
+ * [efraindiaz] 09-Mar-2023 Se incluye filtro de permisos 
+ */
 export const getZoneDirectories = async (req, res) => {
     try {
+        const sessionUser = req.user
         const zoneUuid = req.params.zone
         const zone = await getZoneByKey(zoneUuid)
+        let includeItems = ''
+        const permissions = await model.directoryPermissions.findAll({
+            where: { allowTo: sessionUser.id },
+            attributes: ['directoryId']
+        })
+        if (permissions.length > 0) {
+            includeItems = permissions.map((item) => item.directoryId)
+        }
         const directories = await model.directories.findAll({
+            order: model.sequelize.literal('`directories`.`id` DESC'),
             attributes: ['id', 'uuid', 'zoneId', 'key', 'name', 'description'],
-            where: { zoneId: zone.id }
+            where: {
+                zoneId: zone.id,
+                [Op.or]: [{
+                    commonAccess: true
+                }, {
+                    id: {
+                        [Op.in]: includeItems
+                    }
+                }]
+            }
         })
         return res.status(200).send({ data: { directories } })
     } catch (error) {
@@ -85,25 +115,44 @@ export const getZoneDirectories = async (req, res) => {
     }
 }
 
+/**
+ * 
+ * @param {*} req 
+ * @param {*} res 
+ * @returns 
+ * @history
+ * [efraindiaz] 09-03-2023 Se incluye filtro de permisos  
+ */
 export const getDirectoryFiles = async (req, res) => {
-
+    const sessionUser = req.user
     //Obtenemos el directorio
     const targetDirectory = req.params.directory
     const directory = await model.directories.findOne({
         where: { uuid: targetDirectory }
     })
-
+    let includeItems = ''
+    const permissions = await model.masterFilePermissions.findAll({
+        where: { allowTo: sessionUser.id },
+        attributes: ['masterFileId']
+    })
+    if (permissions.length > 0) {
+        includeItems = permissions.map((item) => item.masterFileId)
+    }
     const { rows, count } = await model.masterFiles.findAndCountAll({
-        where: { parentDirectory: directory.id },
+        where: {
+            parentDirectory: directory.id,
+            [Op.or]: [{
+                commonAccess: true
+            }, {
+                id: {
+                    [Op.in]: includeItems
+                }
+            }]
+        },
         distinct: true,
         order: model.sequelize.literal('`masterFiles`.`id` DESC, `files`.`id` DESC'),
-        //order: model.sequelize.literal('`masterFiles`.`id` DESC'),
-        //limit: 1,
         include: {
             model: model.files,
-            //separate: true,        
-            //order: model.sequelize.literal('`files`.`id` DESC'),
-            //limit: 1
         }
     })
 
@@ -114,7 +163,6 @@ export const getFile = async (req, res) => {
     const key = req.params.file
     const file = await model.masterFiles.findOne({
         where: { 'uuid': key },
-        //order: model.sequelize.literal('`files`.`id` DESC'),
         include: {
             model: model.files,
             separate: true,
@@ -157,7 +205,8 @@ export const uploadFile = async (req, res) => {
                     description,
                     order: 0,
                     status: 1,
-                    createdBy: userSession?.identity
+                    createdBy: userSession?.identity,
+                    commonAccess: 1
                 }, { transaction: t })
             }
             //Si existe archivo principal, solo generamos versionado
@@ -176,7 +225,7 @@ export const uploadFile = async (req, res) => {
             //Generamos tags del archivo
             //await createFileTags(fileItem.id, tags)
             //file upload section                        
-            const s3Upload = true //await S3Service.upload(fileKey, fileContent)
+            const s3Upload = await S3Service.upload(fileKey, fileContent)
             if (!s3Upload) {
                 await t.rollback()
                 return res.send(400)
@@ -191,6 +240,21 @@ export const uploadFile = async (req, res) => {
         await t.rollback()
         return res.send(400)
     }
+}
+
+export const downloadFile = async (req, res) => {
+    const fileUuid = req.params.file
+    //Get full key
+    const fileData = await model.files.findOne({
+        where: { uuid: fileUuid }
+    })
+    //Download file from AWS S3                                   
+    const download = await S3Service.download(fileData.fullKey)
+        .then(function (data) {
+            //res.attachment(fileData.key); // Set Filename
+            res.send(data)
+            res.end()
+        })
 }
 
 const getDirectoryByKey = async (key) => {
@@ -278,4 +342,4 @@ const getMasterFilesByKey = async (key) => {
     })
     return masterFile
 }
-   
+
