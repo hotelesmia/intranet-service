@@ -246,9 +246,15 @@ export const downloadFile = async (req, res) => {
     const fileUuid = req.params.file
     //Get full key
     const fileData = await model.files.findOne({
-        where: { uuid: fileUuid }
+        where: {
+            [Op.or]: [{ uuid: fileUuid }, { key: fileUuid }]
+        }
     })
-    //Download file from AWS S3                                   
+    //Download file from AWS S3
+    if (!fileData) {
+        res.status(400).send({ error: { message: "Archivo no encontrado" } })
+        res.end()
+    }
     const download = await S3Service.download(fileData.fullKey)
         .then(function (data) {
             //res.attachment(fileData.key); // Set Filename
